@@ -4,7 +4,7 @@ on:
     branches: [main]
 jobs: 
   build:
-    runs-on: Ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
         - name: Checkout to Repo
           uses: actions/checkout@v4
@@ -15,16 +15,40 @@ jobs:
             username: ${{secrets.DOCKERHUB_USERNAME}}
             password: ${{secrets.DOCKERHUB_TOKEN}}
 
-        - name: Build and push Backend    
+        - name: Build Backend Image
           uses: docker/build-push-action@v6
           with: 
             context: ./backend
-            push: true
+            load: true
             tags: ${{secrets.DOCKERHUB_USERNAME}}/yfc-backend:${{github.sha}}
 
-        - name: Build and push Frontend
+        - name: Build Frontend Image
           uses: docker/build-push-action@v6
           with: 
             context: ./frontend
-            push: true
+            load: true
             tags: ${{secrets.DOCKERHUB_USERNAME}}/yfc-frontend:${{github.sha}}
+
+        - name: Scan Backend Image with Trivy 
+          uses: aquasecurity/trivy-action@v0.36.0
+          with: 
+            image-ref: ${{secrets.DOCKERHUB_USERNAME}}/yfc-backend:${{github.sha}}
+            format: table
+            severity: HIGH,CRITICAL
+            ignore-unfixed: true
+            exit-code: '0'
+
+        - name: Scan Frontend Image with Trivy 
+          uses: aquasecurity/trivy-action@v0.36.0
+          with: 
+            image-ref: ${{secrets.DOCKERHUB_USERNAME}}/yfc-frontend:${{github.sha}}
+            format: table
+            severity: HIGH,CRITICAL
+            ignore-unfixed: true
+            exit-code: '0'
+
+        - name: Push Backend Image
+          run: docker push ${{secrets.DOCKERHUB_USERNAME}}/yfc-backend:${{github.sha}}
+
+        - name: Push Frontend Image
+          run: docker push ${{secrets.DOCKERHUB_USERNAME}}/yfc-frontend:${{github.sha}}
